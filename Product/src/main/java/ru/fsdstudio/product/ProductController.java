@@ -44,8 +44,8 @@ public class ProductController {
     }
     
     @PostMapping("/books")
-    public BookDto createBook(@RequestBody BookDto bookDto, @RequestBody StockDto stockDto) {
-        return productService.createBook(bookDto, stockDto);
+    public BookDto createBook(@RequestBody BookDto bookDto) {
+        return productService.createBook(bookDto);
     }
     
     @PatchMapping("/{id}")

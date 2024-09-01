@@ -21,11 +21,11 @@ public class ProductService {
     
     private final BookMapper bookMapper;
     
-    private final StockMapper stockMapper;
-    
     private final ProductRepository productRepository;
     
     private final BookRepository bookRepository;
+    
+    private final StockRepository stockRepository;
     
     private final ObjectMapper objectMapper;
     
@@ -50,12 +50,25 @@ public class ProductService {
         return productMapper.toDto(resultProduct);
     }
     
-    public BookDto createBook(BookDto bookDto, StockDto stockDto) {
-        Book book = bookMapper.toEntity(bookDto);
-        Stock stock = stockMapper.toEntity(stockDto);
-        book.setStock(stock);
-        Book resultBook = bookRepository.save(book);
-        return bookMapper.toDto(resultBook);
+    public BookDto createBook(BookDto bookDto) {
+        Book book = new Book();
+        book.setName(bookDto.getName());
+        book.setDescription(bookDto.getDescription());
+        book.setAuthor(bookDto.getAuthor());
+        
+        Stock stock = new Stock();
+        stock.setPrice(bookDto.getPrice());
+        stock.setQuantity(bookDto.getQuantity());
+        stock.setProduct(book);
+        
+        bookRepository.save(book);
+        stockRepository.save(stock);
+        
+        BookDto response = bookMapper.toDto(book);
+        response.setPrice(stock.getPrice());
+        response.setQuantity(stock.getQuantity());
+        
+        return response;
     }
     
     public ProductDto patch(Long id, JsonNode patchNode) throws IOException {

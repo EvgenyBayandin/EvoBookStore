@@ -1,15 +1,16 @@
 package ru.fsdstudio.product;
 
 import jakarta.persistence.*;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-import ru.fsdstudio.order.OrderItems;
+import ru.fsdstudio.order.OrderItem;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "products")
-public class Product {
+public class Product implements ProductType{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -21,12 +22,25 @@ public class Product {
     @Column(name = "description")
     private String description;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_items_id")
-    private OrderItems orderItems;
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    private List<OrderItem> orderItems;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stock_id")
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Stock stock;
     
+    public Product() {}
+    
+    public Product(Stock stock) {
+        this.stock = stock;
+    }
+    
+    @Override
+    public String getProductName() {
+        return this.name;
+    }
+    
+    @Override
+    public String getProductDescription() {
+        return this.description;
+    }
 }

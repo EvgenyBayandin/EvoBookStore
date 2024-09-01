@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "EvoBookStore": {
+      "host": "postgres",
+      "port": 5432,
+      "username": "root",
+      "password": "root",
+      "maintenance_db": "EvoBookStore"
+    }
+  }
+}

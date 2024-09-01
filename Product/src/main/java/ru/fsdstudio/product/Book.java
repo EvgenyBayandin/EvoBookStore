@@ -15,21 +15,46 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "books")
-public class Book {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
-    private Long id;
-    
+public class Book extends Product {
     @Column(name = "author")
     private String author;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    public Book() {}
     
-    public void setStock(ru.fsdstudio.product.Stock stock) {
-        this.product.setStock(stock);
+    public Book(Stock stock, String author) {
+        super(stock);
+        this.author = author;
+    }
+    
+    @Override
+    public String getProductName() {
+        return this.getName();
+    }
+
+    @Override
+    public String getProductDescription() {
+        return this.getDescription();
     }
 }
+
+//@Getter
+//@Setter
+//@Entity
+//@Table(name = "books")
+//public class Book {
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    @Column(name = "id", nullable = false)
+//    private Long id;
+//
+//    @Column(name = "author")
+//    private String author;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "product_id")
+//    private Product product;
+//
+//    public void setStock(Stock stock) {
+//        this.product.setStock(stock);
+//    }
+//}

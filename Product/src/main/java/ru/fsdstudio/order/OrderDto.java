@@ -20,31 +20,11 @@ public class OrderDto {
     private Instant updatedAt;
     private Status status;
     private Long customerId;
+    private List<OrderItemDto> orderItems;
     private BigDecimal totalAmount;
-    private List<OrderItemsDto> orderItems;
+    private Object[] totalQuantityAndAmount;
     
     public OrderDto() {
         this.orderItems = new ArrayList<>();
-    }
-    
-    public void addOrderItem(OrderItemsDto orderItem) {
-        this.orderItems.add(orderItem);
-    }
-    
-    /**
-     * DTO for {@link OrderItems}
-     */
-    @Setter
-    @Getter
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class OrderItemsDto {
-        Long id;
-        Long productId;
-        String productName;
-        String productDescription;
-        Long quantity;
-        BigDecimal amount;
-        
-        public OrderItemsDto() {}
     }
 }

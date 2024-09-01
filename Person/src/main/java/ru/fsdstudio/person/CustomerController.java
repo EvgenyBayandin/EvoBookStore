@@ -29,7 +29,7 @@ public class CustomerController {
     }
     
     @GetMapping("/{id}")
-    public CustomerResponceDtoV1 getOne(@PathVariable Long id) {
+    public CustomerResponceDtoV1 getOne(@PathVariable("id") Long id) {
         return customerServiceImpl.getOne(id);
     }
     

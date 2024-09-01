@@ -30,7 +30,6 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -51,6 +50,12 @@
             <artifactId>mapstruct</artifactId>
             <version>1.5.3.Final</version>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>ru.fsdstudio</groupId>
+            <artifactId>Person</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
     <dependencyManagement>
