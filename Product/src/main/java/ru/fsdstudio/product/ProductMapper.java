@@ -1,13 +1,23 @@
 package ru.fsdstudio.product;
 
-@org.mapstruct.Mapper(unmappedTargetPolicy = org.mapstruct.ReportingPolicy.IGNORE, componentModel = org.mapstruct.MappingConstants.ComponentModel.SPRING)
+import java.math.BigDecimal;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingConstants;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.ReportingPolicy;
+
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ProductMapper {
-    Product toEntity(ru.fsdstudio.product.ProductDto productDto);
+    Product toEntity(ProductDto productDto);
     
-    ru.fsdstudio.product.ProductDto toDto(Product product);
+//    ProductDto toDto(Product product);
     
-    @org.mapstruct.BeanMapping(nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
-    ru.fsdstudio.product.Product partialUpdate(ru.fsdstudio.product.ProductDto productDto, @org.mapstruct.MappingTarget ru.fsdstudio.product.Product product);
+    ProductDto toDto(Product product, BigDecimal price, Long quantity);
     
-    Product updateWithNull(ru.fsdstudio.product.ProductDto productDto, @org.mapstruct.MappingTarget Product product);
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    Product partialUpdate(ProductDto productDto, @MappingTarget Product product);
+    
+    Product updateWithNull(ProductDto productDto, @MappingTarget Product product);
 }

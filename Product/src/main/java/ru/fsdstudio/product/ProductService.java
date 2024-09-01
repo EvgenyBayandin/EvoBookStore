@@ -3,6 +3,7 @@ package ru.fsdstudio.product;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,23 +32,43 @@ public class ProductService {
     
     public Page<ProductDto> getList(Pageable pageable) {
         Page<Product> products = productRepository.findAll(pageable);
-        return products.map(productMapper::toDto);
+        return products.map(product -> {
+            Stock stock = getStock(product.getId());
+            return stock != null
+                    ? productMapper.toDto(product, stock.getPrice(), stock.getQuantity())
+                    : productMapper.toDto(product, BigDecimal.ZERO, 0L);
+        });
     }
     
     public ProductDto getOne(Long id) {
         Optional<Product> productOptional = productRepository.findById(id);
-        return productMapper.toDto(productOptional.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity with id `%s` not found".formatted(id))));
+        Product product = productOptional
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
+        
+        Stock stock = getStock(id);
+        
+        return stock != null
+                ? productMapper.toDto(product, stock.getPrice(), stock.getQuantity())
+                : productMapper.toDto(product, BigDecimal.ZERO, 0L);
     }
     
     public List<ProductDto> getMany(List<Long> ids) {
         List<Product> products = productRepository.findAllById(ids);
-        return products.stream().map(productMapper::toDto).toList();
+        return products.stream()
+                .map(product -> {
+                    Stock stock = getStock(product.getId());
+                    return stock != null
+                            ? productMapper.toDto(product, stock.getPrice(), stock.getQuantity())
+                            : productMapper.toDto(product, BigDecimal.ZERO, 0L);
+                })
+                .toList();
     }
     
     public ProductDto create(ProductDto dto) {
         Product product = productMapper.toEntity(dto);
         Product resultProduct = productRepository.save(product);
-        return productMapper.toDto(resultProduct);
+        Stock stock = getStock(dto.getId());
+        return productMapper.toDto(resultProduct, stock.getPrice(), stock.getQuantity());
     }
     
     public BookDto createBook(BookDto bookDto) {
@@ -70,40 +91,59 @@ public class ProductService {
         
         return response;
     }
-    
+
     public ProductDto patch(Long id, JsonNode patchNode) throws IOException {
-        Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity with id `%s` not found".formatted(id)));
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
         
-        ProductDto productDto = productMapper.toDto(product);
+        Stock stock = getStockOrDefault(product.getId());
+        
+        ProductDto productDto = productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
         objectMapper.readerForUpdating(productDto).readValue(patchNode, JsonNode.class);
         productMapper.updateWithNull(productDto, product);
         
         Product resultProduct = productRepository.save(product);
-        return productMapper.toDto(resultProduct);
+        return productMapper.toDto(resultProduct, stock.getPrice(), stock.getQuantity());
     }
     
     public List<Long> patchMany(List<Long> ids, JsonNode patchNode) throws IOException {
         Collection<Product> products = productRepository.findAllById(ids);
         
         for (Product product : products) {
-            ProductDto productDto = productMapper.toDto(product);
+            Stock stock = getStockOrDefault(product.getId());
+            
+            ProductDto productDto = productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
             objectMapper.readerForUpdating(productDto).readValue(patchNode, JsonNode.class);
             productMapper.updateWithNull(productDto, product);
         }
         
         List<Product> resultProducts = productRepository.saveAll(products);
-        return resultProducts.stream().map(Product::getId).toList();
+        return resultProducts.stream()
+                .map(product -> {
+                    Stock stock = getStockOrDefault(product.getId());
+                    
+                    return productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
+                })
+                .map(ProductDto::getId)
+                .toList();
     }
     
-    public ProductDto delete(Long id) {
-        Product product = productRepository.findById(id).orElse(null);
-        if (product != null) {
+    public void delete(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
             productRepository.delete(product);
-        }
-        return productMapper.toDto(product);
     }
     
     public void deleteMany(List<Long> ids) {
         productRepository.deleteAllById(ids);
+    }
+    
+    private Stock getStock(Long productId) {
+        return stockRepository.findByProductId(productId);
+    }
+    
+    private Stock getStockOrDefault(Long productId) {
+        Stock stock = getStock(productId);
+        return stock != null ? stock : new Stock();
     }
 }

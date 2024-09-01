@@ -59,8 +59,8 @@ public class ProductController {
     }
     
     @DeleteMapping("/{id}")
-    public ProductDto delete(@PathVariable Long id) {
-        return productService.delete(id);
+    public void delete(@PathVariable Long id) {
+        productService.delete(id);
     }
     
     @DeleteMapping
