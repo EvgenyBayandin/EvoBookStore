@@ -40,5 +40,5 @@ services:
     entrypoint: /bin/sh -c "chmod 600 /pgadmin4/pgpass; /entrypoint.sh;"
 
 volumes:
-    postgres_data:
-    pgadmin_data:
+  postgres_data:
+  pgadmin_data:

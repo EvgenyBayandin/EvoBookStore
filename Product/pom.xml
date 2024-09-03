@@ -51,12 +51,6 @@
             <version>1.5.3.Final</version>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>ru.fsdstudio</groupId>
-            <artifactId>Person</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -106,6 +100,9 @@
                             <version>1.5.3.Final</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgument>
+                        -parameters
+                    </compilerArgument>
                 </configuration>
             </plugin>
         </plugins>
