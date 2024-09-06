@@ -3,8 +3,6 @@ package ru.fsdstudio.person.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,6 +14,7 @@ import ru.fsdstudio.person.config.PasswordEncoderConfig;
 import ru.fsdstudio.person.dto.CustomerRequestDtoV1;
 import ru.fsdstudio.person.dto.CustomerResponceDtoV1;
 import ru.fsdstudio.person.entity.Customer;
+import ru.fsdstudio.person.entity.Role;
 import ru.fsdstudio.person.mapper.CustomerMapper;
 import ru.fsdstudio.person.repo.CustomerRepository;
 
@@ -40,15 +39,10 @@ public class CustomerService {
         return customerMapper.toDto1(customerOptional.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity with id `%s` not found".formatted(id))));
     }
     
-    public List<CustomerResponceDtoV1> getMany(List<Long> ids) {
-        List<Customer> customers = customerRepository.findAllById(ids);
-        return customers.stream().map(customerMapper::toDto1).toList();
-    }
-    
     public CustomerResponceDtoV1 create(CustomerRequestDtoV1 dto) {
         Customer customer = customerMapper.toEntity(dto);
         customer.setPassword(passwordEncoder.encode(customer.getPassword()));
-        customer.setRole(ru.fsdstudio.person.entity.Role.USER);
+        customer.setRole(Role.USER);
         Customer resultCustomer = customerRepository.save(customer);
         return customerMapper.toDto1(resultCustomer);
     }
@@ -64,28 +58,11 @@ public class CustomerService {
         return customerMapper.toDto1(resultCustomer);
     }
     
-    public List<Long> patchMany(List<Long> ids, JsonNode patchNode) throws IOException {
-        Collection<Customer> customers = customerRepository.findAllById(ids);
-        
-        for (Customer customer : customers) {
-            CustomerRequestDtoV1 customerRequestDtoV1 = customerMapper.toDto(customer);
-            objectMapper.readerForUpdating(customerRequestDtoV1).readValue(patchNode);
-            customerMapper.updateWithNull(customerRequestDtoV1, customer);
-        }
-        
-        List<Customer> resultCustomers = customerRepository.saveAll(customers);
-        return resultCustomers.stream().map(Customer::getId).toList();
-    }
-    
     public CustomerResponceDtoV1 delete(Long id) {
         Customer customer = customerRepository.findById(id).orElse(null);
         if (customer != null) {
             customerRepository.delete(customer);
         }
         return customerMapper.toDto1(customer);
-    }
-    
-    public void deleteMany(List<Long> ids) {
-        customerRepository.deleteAllById(ids);
     }
 }

@@ -4,14 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import ru.fsdstudio.product.dto.BookDto;
 import ru.fsdstudio.product.dto.ProductDto;
@@ -62,16 +61,31 @@ public class ProductService {
                 : productMapper.toDto(product, BigDecimal.ZERO, 0L);
     }
     
-    public List<ProductDto> getMany(List<Long> ids) {
-        List<Product> products = productRepository.findAllById(ids);
-        return products.stream()
-                .map(product -> {
-                    Stock stock = getStock(product.getId());
-                    return stock != null
-                            ? productMapper.toDto(product, stock.getPrice(), stock.getQuantity())
-                            : productMapper.toDto(product, BigDecimal.ZERO, 0L);
-                })
-                .toList();
+    public Page<BookDto> getBookList(Pageable pageable) {
+        Page<Book> bookPage = bookRepository.findAll(pageable);
+        
+        return bookPage.map(book -> {
+            BookDto bookDto = bookMapper.toDto(book);
+            Stock stock = getStockOrDefault(book.getId());
+            bookDto.setPrice(stock.getPrice());
+            bookDto.setQuantity(stock.getQuantity());
+            
+            return bookDto;
+        });
+    }
+    
+    public BookDto getBookById(Long productId) {
+        Optional<Book> bookOptional = bookRepository.findById(productId);
+        Book book = bookOptional
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book with productId `%s` not found".formatted(productId)));
+        
+        Stock stock = getStockOrDefault(book.getId());
+        
+        BookDto result = bookMapper.toDto(book);
+        result.setPrice(stock.getPrice());
+        result.setQuantity(stock.getQuantity());
+        
+        return result;
     }
     
     public ProductDto create(ProductDto dto) {
@@ -108,7 +122,8 @@ public class ProductService {
         
         return response;
     }
-
+    
+    @Transactional
     public ProductDto patch(Long id, JsonNode patchNode) throws IOException {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
@@ -116,43 +131,60 @@ public class ProductService {
         Stock stock = getStockOrDefault(product.getId());
         
         ProductDto productDto = productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
-        objectMapper.readerForUpdating(productDto).readValue(patchNode, JsonNode.class);
-        productMapper.updateWithNull(productDto, product);
         
-        Product resultProduct = productRepository.save(product);
-        return productMapper.toDto(resultProduct, stock.getPrice(), stock.getQuantity());
+        ProductDto updatedProductDto = objectMapper.readerForUpdating(productDto).readValue(patchNode);
+        
+        productMapper.updateWithNull(updatedProductDto, product);
+        
+        stock.setPrice(updatedProductDto.getPrice());
+        stock.setQuantity(updatedProductDto.getQuantity());
+        
+        product.setStock(stock);
+        Product savedProduct = productRepository.save(product);
+        Stock savedStock = stockRepository.save(stock);
+        
+        ProductDto resultDto = productMapper.toDto(savedProduct, savedStock.getPrice(), savedStock.getQuantity());
+        
+        return resultDto;
     }
     
-    public List<Long> patchMany(List<Long> ids, JsonNode patchNode) throws IOException {
-        Collection<Product> products = productRepository.findAllById(ids);
+    @Transactional
+    public BookDto patchBook(Long id, JsonNode patchNode) throws IOException {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
         
-        for (Product product : products) {
-            Stock stock = getStockOrDefault(product.getId());
-            
-            ProductDto productDto = productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
-            objectMapper.readerForUpdating(productDto).readValue(patchNode, JsonNode.class);
-            productMapper.updateWithNull(productDto, product);
+        if (!(product instanceof Book)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product is not a book");
         }
         
-        List<Product> resultProducts = productRepository.saveAll(products);
-        return resultProducts.stream()
-                .map(product -> {
-                    Stock stock = getStockOrDefault(product.getId());
-                    
-                    return productMapper.toDto(product, stock.getPrice(), stock.getQuantity());
-                })
-                .map(ProductDto::getId)
-                .toList();
+        Book book = (Book) product;
+        Stock stock = getStockOrDefault(product.getId());
+        
+        BookDto bookDto = bookMapper.toDto(book);
+        bookDto.setPrice(stock.getPrice());
+        bookDto.setQuantity(stock.getQuantity());
+        
+        BookDto updatedBookDto = objectMapper.readerForUpdating(bookDto).readValue(patchNode);
+        
+        bookMapper.partialUpdate(updatedBookDto, book);
+        stock.setPrice(updatedBookDto.getPrice());
+        stock.setQuantity(updatedBookDto.getQuantity());
+        
+        book.setStock(stock);
+        Book savedBook = productRepository.save(book);
+        Stock savedStock = stockRepository.save(stock);
+        
+        BookDto resultDto = bookMapper.toDto(savedBook);
+        resultDto.setPrice(savedStock.getPrice());
+        resultDto.setQuantity(savedStock.getQuantity());
+        
+        return resultDto;
     }
     
     public void delete(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product with id `%s` not found".formatted(id)));
             productRepository.delete(product);
-    }
-    
-    public void deleteMany(List<Long> ids) {
-        productRepository.deleteAllById(ids);
     }
     
     public Stock getStock(Long productId) {

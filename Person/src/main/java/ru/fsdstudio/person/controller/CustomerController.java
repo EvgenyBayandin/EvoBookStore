@@ -1,11 +1,13 @@
 package ru.fsdstudio.person.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.IOException;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.web.bind.annotation.*;
 import ru.fsdstudio.person.dto.CustomerRequestDtoV1;
 import ru.fsdstudio.person.dto.CustomerResponceDtoV1;
@@ -16,45 +18,44 @@ import ru.fsdstudio.person.service.CustomerService;
 @RequiredArgsConstructor
 public class CustomerController {
     
-    private final CustomerService customerServiceImpl;
+    private final CustomerService customerService;
     
     @GetMapping
-    public Page<CustomerResponceDtoV1> getList(Pageable pageable) {
-        return customerServiceImpl.getList(pageable);
+    public Page<CustomerResponceDtoV1> getList(
+            @Schema(description = "Pageable", defaultValue = "page=0&size=10&sort=id,asc")
+            @SortDefault(sort = "id", direction = Sort.Direction.ASC)
+            Pageable pageable
+    ) {
+        return customerService.getList(pageable);
     }
     
     @GetMapping("/{id}")
     public CustomerResponceDtoV1 getOne(@PathVariable("id") Long id) {
-        return customerServiceImpl.getOne(id);
-    }
-    
-    @GetMapping("/by-ids")
-    public List<CustomerResponceDtoV1> getMany(@RequestParam List<Long> ids) {
-        return customerServiceImpl.getMany(ids);
+        return customerService.getOne(id);
     }
     
     @PostMapping
     public CustomerResponceDtoV1 create(@RequestBody CustomerRequestDtoV1 dto) {
-        return customerServiceImpl.create(dto);
+        return customerService.create(dto);
     }
     
     @PatchMapping("/{id}")
-    public CustomerResponceDtoV1 patch(@PathVariable Long id, @RequestBody JsonNode patchNode) throws IOException {
-        return customerServiceImpl.patch(id, patchNode);
-    }
-    
-    @PatchMapping
-    public List<Long> patchMany(@RequestParam List<Long> ids, @RequestBody JsonNode patchNode) throws IOException {
-        return customerServiceImpl.patchMany(ids, patchNode);
+    public CustomerResponceDtoV1 patch(
+            @PathVariable Long id,
+            @RequestBody
+            @Schema(description = "Patch request", example =
+                    "{\"firstName\": \"New firstName\", " +
+                            "\"lastName\": \"New lastName\", " +
+                            "\"patronymic\": \"New patronymic or empty string\", " +
+                            "\"email\": \"new@example.com\", " +
+                            "\"username\": \"newUsername\"}")
+            JsonNode patchNode
+    ) throws IOException {
+        return customerService.patch(id, patchNode);
     }
     
     @DeleteMapping("/{id}")
     public CustomerResponceDtoV1 delete(@PathVariable Long id) {
-        return customerServiceImpl.delete(id);
-    }
-    
-    @DeleteMapping
-    public void deleteMany(@RequestParam List<Long> ids) {
-        customerServiceImpl.deleteMany(ids);
+        return customerService.delete(id);
     }
 }

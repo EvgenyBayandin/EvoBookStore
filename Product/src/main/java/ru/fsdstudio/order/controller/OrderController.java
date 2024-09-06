@@ -1,11 +1,13 @@
 package ru.fsdstudio.order.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.IOException;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.web.bind.annotation.*;
 import ru.fsdstudio.order.dto.OrderDto;
 import ru.fsdstudio.order.service.OrderService;
@@ -18,7 +20,10 @@ public class OrderController {
     private final OrderService orderService;
     
     @GetMapping
-    public Page<OrderDto> getList(Pageable pageable) {
+    public Page<OrderDto> getList(
+            @Schema(description = "Pageable", defaultValue = "page=0&size=10&sort=id,asc")
+            @SortDefault(sort = "id", direction = Sort.Direction.ASC)
+            Pageable pageable) {
         return orderService.getList(pageable);
     }
     
@@ -27,13 +32,11 @@ public class OrderController {
         return orderService.getOne(id);
     }
     
-    @GetMapping("/by-ids")
-    public List<OrderDto> getMany(@RequestParam List<Long> ids) {
-        return orderService.getMany(ids);
-    }
-    
     @GetMapping("/user-orders")
-    public Page<OrderDto> getUserOrders(Pageable pageable, @RequestParam Long userId) {
+    public Page<OrderDto> getUserOrders(
+            @Schema(description = "Pageable", defaultValue = "page=0&size=10&sort=id,asc")
+            @SortDefault(sort = "id", direction = Sort.Direction.ASC)
+            Pageable pageable, @RequestParam Long userId) {
         return orderService.getUserOrders(pageable, userId);
     }
     
@@ -47,18 +50,8 @@ public class OrderController {
         return orderService.patch(id, patchNode);
     }
     
-    @PatchMapping
-    public List<Long> patchMany(@RequestParam List<Long> ids, @RequestBody JsonNode patchNode) throws IOException {
-        return orderService.patchMany(ids, patchNode);
-    }
-    
     @DeleteMapping("/{id}")
     public OrderDto delete(@PathVariable Long id) {
         return orderService.delete(id);
-    }
-    
-    @DeleteMapping
-    public void deleteMany(@RequestParam List<Long> ids) {
-        orderService.deleteMany(ids);
     }
 }

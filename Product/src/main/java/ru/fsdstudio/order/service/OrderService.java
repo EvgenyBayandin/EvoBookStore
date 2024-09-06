@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -23,6 +22,11 @@ import ru.fsdstudio.order.entity.Status;
 import ru.fsdstudio.order.mapper.OrderMapper;
 import ru.fsdstudio.order.repo.OrderItemRepository;
 import ru.fsdstudio.order.repo.OrderRepository;
+import ru.fsdstudio.product.entity.Product;
+import ru.fsdstudio.product.entity.Stock;
+import ru.fsdstudio.product.repo.ProductRepository;
+import ru.fsdstudio.product.repo.StockRepository;
+import ru.fsdstudio.product.service.PersonService;
 
 @RequiredArgsConstructor
 @Service
@@ -32,15 +36,15 @@ public class OrderService {
     
     private final OrderRepository orderRepository;
     
-    private final ru.fsdstudio.product.repo.StockRepository stockRepository;
+    private final StockRepository stockRepository;
     
     private final OrderItemRepository orderItemRepository;
     
     private final ObjectMapper objectMapper;
     
-    private final ru.fsdstudio.product.service.PersonService personService;
+    private final PersonService personService;
     
-    private final ru.fsdstudio.product.repo.ProductRepository productRepository;
+    private final ProductRepository productRepository;
     
     public Page<OrderDto> getList(Pageable pageable) {
         Page<Order> orders = orderRepository.findAll(pageable);
@@ -52,12 +56,6 @@ public class OrderService {
         return orderOptional.map(this::toOrderDto)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order with id `%s` not found".formatted(id)));
     }
-    
-    public List<OrderDto> getMany(List<Long> ids) {
-        List<Order> orders = orderRepository.findAllById(ids);
-        return orders.stream().map(this::toOrderDto).collect(Collectors.toList());
-    }
-    
     
     public Page<OrderDto> getUserOrders(Pageable pageable, Long userId) {
         Page<Order> orders = orderRepository.findByCustomerId(userId, pageable);
@@ -94,7 +92,7 @@ public class OrderService {
         
         // Создаем запись в таблице order_items для каждого продукта в списке
         for (OrderItemDto orderItemDto : dto.getOrderItems()) {
-            ru.fsdstudio.product.entity.Product product = productRepository.findById(orderItemDto.getProductId())
+            Product product = productRepository.findById(orderItemDto.getProductId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + orderItemDto.getProductId()));
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
@@ -105,7 +103,7 @@ public class OrderService {
             order.getOrderItems().add(orderItem);
             
             // Уменьшаем количество товара в складе
-            ru.fsdstudio.product.entity.Stock stock = stockRepository.findByProductId(product.getId());
+            Stock stock = stockRepository.findByProductId(product.getId());
             stock.setQuantity(Math.max(0, stock.getQuantity() - orderItemDto.getQuantity()));
             stockRepository.save(stock);
         }
@@ -120,7 +118,7 @@ public class OrderService {
     
     private boolean hasEnoughStock(Long productId, Long quantity) {
         // Проверяем количество товара на складе
-        ru.fsdstudio.product.entity.Stock stock = stockRepository.findByProductId(productId);
+        Stock stock = stockRepository.findByProductId(productId);
         return stock != null && stock.getQuantity() > 0 && stock.getQuantity() >= quantity;
     }
     
@@ -138,30 +136,12 @@ public class OrderService {
         return orderMapper.toDto(resultOrder);
     }
     
-    public List<Long> patchMany(List<Long> ids, JsonNode patchNode) throws IOException {
-        Collection<Order> orders = orderRepository.findAllById(ids);
-        
-        for (Order order : orders) {
-            OrderDto orderDto = orderMapper.toDto(order);
-            objectMapper.readerForUpdating(orderDto).readValue(patchNode, JsonNode.class);
-            orderMapper.updateWithNull(orderDto, order);
-            order.setUpdatedAt(Instant.now());
-        }
-        
-        List<Order> resultOrders = orderRepository.saveAll(orders);
-        return resultOrders.stream().map(Order::getId).toList();
-    }
-    
     public OrderDto delete(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
         if (order != null) {
             orderRepository.delete(order);
         }
         return orderMapper.toDto(order);
-    }
-    
-    public void deleteMany(List<Long> ids) {
-        orderRepository.deleteAllById(ids);
     }
     
     private OrderDto toOrderDto(Order order) {

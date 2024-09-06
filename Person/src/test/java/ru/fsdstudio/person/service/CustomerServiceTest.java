@@ -1,7 +1,5 @@
 package ru.fsdstudio.person.service;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -104,50 +102,6 @@ public class CustomerServiceTest {
         
         // Act and Assert
         assertThrows(ResponseStatusException.class, () -> customerService.getOne(id));
-    }
-    
-    @Test
-    public void testGetMany_FoundCustomers() {
-        // Arrange
-        List<Long> ids = Arrays.asList(1L, 2L, 3L);
-        when(customerRepository.findAllById(ids)).thenReturn(Arrays.asList(
-                new Customer(),
-                new Customer(),
-                new Customer()));
-
-        // Act
-        List<CustomerResponceDtoV1> result = customerService.getMany(ids);
-
-        // Assert
-        assertEquals(3, result.size());
-    }
-    
-    @Test
-    public void testGetMany_NotFoundCustomers() {
-        // Arrange
-        List<Long> ids = Arrays.asList(1L, 2L, 3L);
-        when(customerRepository.findAllById(ids)).thenReturn(Collections.emptyList());
-        
-        // Act
-        List<CustomerResponceDtoV1> result = customerService.getMany(ids);
-        
-        // Assert
-        assertTrue(result.isEmpty());
-    }
-    
-    @Test
-    public void testGetMany_PartiallyFoundCustomers() {
-        // Arrange
-        List<Long> ids = Arrays.asList(1L, 2L, 3L);
-        when(customerRepository.findAllById(ids)).thenReturn(Arrays.asList(
-                new Customer(),
-                new Customer()));
-        
-        // Act
-        List<CustomerResponceDtoV1> result = customerService.getMany(ids);
-        
-        // Assert
-        assertEquals(2, result.size());
     }
     
     @Test

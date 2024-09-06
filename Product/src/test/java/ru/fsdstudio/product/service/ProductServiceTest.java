@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -55,6 +54,7 @@ public class ProductServiceTest {
     
     @Mock
     private ObjectMapper objectMapper;
+
     
     @Test
     public void testGetList_WithProducts() {
@@ -183,21 +183,6 @@ public class ProductServiceTest {
     }
     
     @Test
-    public void testGetMany_WithExistingProducts() {
-        // Arrange
-        List<Long> ids = List.of(1L, 2L);
-        List<Product> products = List.of(new Product(), new Product());
-        when(productRepository.findAllById(ids)).thenReturn(products);
-        when(productMapper.toDto(any(Product.class), any(BigDecimal.class), anyLong())).thenReturn(new ProductDto());
-
-        // Act
-        List<ProductDto> result = productService.getMany(ids);
-
-        // Assert
-        assertEquals(2, result.size());
-    }
-    
-    @Test
     public void testCreateProductWithValidData() {
         // Arrange
         ProductDto dto = new ProductDto(null, "Product name", "Product description", BigDecimal.valueOf(10.0), 5L);
@@ -308,82 +293,157 @@ public class ProductServiceTest {
         Long productId = 1L;
         Product product = new Product();
         product.setId(productId);
+        product.setName("Old Name");
+        product.setDescription("Old Description");
+        
         Stock stock = new Stock();
         stock.setPrice(BigDecimal.TEN);
         stock.setQuantity(5L);
+        product.setStock(stock);
         
-        ProductDto productDto = new ProductDto();
+        ProductDto inputProductDto = new ProductDto();
+        inputProductDto.setName("New Name");
+        inputProductDto.setDescription("New Description");
+        inputProductDto.setPrice(BigDecimal.valueOf(15));
+        inputProductDto.setQuantity(10L);
+        
         JsonNode patchNode = mock(JsonNode.class);
         
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productService.getStockOrDefault(productId)).thenReturn(stock);
-        when(productMapper.toDto(product, stock.getPrice(), stock.getQuantity())).thenReturn(productDto);
         
         ObjectReader mockReader = mock(ObjectReader.class);
         when(objectMapper.readerForUpdating(any())).thenReturn(mockReader);
-        when(mockReader.readValue(any(JsonNode.class), eq(JsonNode.class))).thenReturn(patchNode);
+        when(mockReader.readValue(any(JsonNode.class))).thenReturn(inputProductDto);
         
-        when(productRepository.save(product)).thenReturn(product);
+        // Настройка мока для updateWithNull
+        doAnswer(invocation -> {
+            ProductDto dto = invocation.getArgument(0);
+            Product productToUpdate = invocation.getArgument(1);
+            productToUpdate.setName(dto.getName());
+            productToUpdate.setDescription(dto.getDescription());
+            productToUpdate.getStock().setPrice(dto.getPrice());
+            productToUpdate.getStock().setQuantity(dto.getQuantity());
+            return null;
+        }).when(productMapper).updateWithNull(any(ProductDto.class), any(Product.class));
+        
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockRepository.save(any(Stock.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        
+        when(productMapper.toDto(any(Product.class), any(BigDecimal.class), any(Long.class)))
+                .thenAnswer(invocation -> {
+                    Product updatedProduct = invocation.getArgument(0);
+                    BigDecimal price = invocation.getArgument(1);
+                    Long quantity = invocation.getArgument(2);
+                    ProductDto resultDto = new ProductDto();
+                    resultDto.setId(updatedProduct.getId());
+                    resultDto.setName(updatedProduct.getName());
+                    resultDto.setDescription(updatedProduct.getDescription());
+                    resultDto.setPrice(price);
+                    resultDto.setQuantity(quantity);
+                    return resultDto;
+                });
         
         // Act
         ProductDto result = productService.patch(productId, patchNode);
         
         // Assert
         assertNotNull(result);
+        assertEquals("New Name", result.getName());
+        assertEquals("New Description", result.getDescription());
+        assertEquals(BigDecimal.valueOf(15), result.getPrice());
+        assertEquals(10L, result.getQuantity());
+        
         verify(productRepository).findById(productId);
-        verify(productMapper).updateWithNull(eq(productDto), eq(product));
+        verify(productMapper).updateWithNull(eq(inputProductDto), eq(product));
         verify(productRepository).save(product);
+        verify(stockRepository).save(stock);
     }
     
     @Test
-    void testPatchMany() throws IOException {
+    void testPatchBook() throws IOException {
         // Arrange
-        List<Long> ids = Arrays.asList(1L, 2L);
-        Stock stock1 = new Stock();
-        stock1.setPrice(BigDecimal.ONE);
-        stock1.setQuantity(1L);
-        Stock stock2 = new Stock();
-        stock2.setPrice(BigDecimal.ONE);
-        stock2.setQuantity(1L);
-        List<Product> products = Arrays.asList(new Product(stock1), new Product(stock2));
-        products.get(0).setId(1L);
-        products.get(1).setId(2L);
+        Long bookId = 1L;
+        Book book = new Book();
+        book.setId(bookId);
+        book.setName("Old Name");
+        book.setDescription("Old Description");
+        book.setAuthor("Old Author");
+        
         Stock stock = new Stock();
         stock.setPrice(BigDecimal.TEN);
         stock.setQuantity(5L);
+        book.setStock(stock);
         
-        ProductDto productDto1 = new ProductDto();
-        productDto1.setId(1L);
-        ProductDto productDto2 = new ProductDto();
-        productDto2.setId(2L);
+        BookDto inputBookDto = BookDto.builder()
+                .name("New Name")
+                .description("New Description")
+                .author("New Author")
+                .price(BigDecimal.valueOf(15))
+                .quantity(10L)
+                .build();
+        
         JsonNode patchNode = mock(JsonNode.class);
-        
-        when(productRepository.findAllById(ids)).thenReturn(products);
-        when(productService.getStockOrDefault(anyLong())).thenReturn(stock);
-        when(productMapper.toDto(any(Product.class), any(BigDecimal.class), any(Long.class))).thenAnswer(invocation -> {
-            Product product = invocation.getArgument(0);
-            if (product.getId().equals(1L)) {
-                return productDto1;
-            } else {
-                return productDto2;
-            }
-        });
+
+        when(productRepository.findById(bookId)).thenReturn(Optional.of(book));
+        when(productService.getStockOrDefault(bookId)).thenReturn(stock);
         
         ObjectReader mockReader = mock(ObjectReader.class);
-        when(objectMapper.readerForUpdating(any())).thenReturn(mockReader);
-        when(mockReader.readValue(any(JsonNode.class), eq(JsonNode.class))).thenReturn(patchNode);
+        when(objectMapper.readerForUpdating(any(BookDto.class))).thenReturn(mockReader);
+        when(mockReader.readValue(any(JsonNode.class))).thenAnswer(invocation -> {
+            BookDto updatedDto = BookDto.builder()
+                    .name("New Name")
+                    .description("New Description")
+                    .author("New Author")
+                    .price(BigDecimal.valueOf(15))
+                    .quantity(10L)
+                    .build();
+            return updatedDto;
+        });
         
-        when(productRepository.saveAll(products)).thenReturn(products);
+        // Имитируем обновление книги и стока
+        doAnswer(invocation -> {
+            BookDto dto = invocation.getArgument(0);
+            Book bookToUpdate = invocation.getArgument(1);
+            bookToUpdate.setName(dto.getName());
+            bookToUpdate.setDescription(dto.getDescription());
+            bookToUpdate.setAuthor(dto.getAuthor());
+            bookToUpdate.getStock().setPrice(dto.getPrice());
+            bookToUpdate.getStock().setQuantity(dto.getQuantity());
+            return bookToUpdate;
+        }).when(bookMapper).partialUpdate(any(BookDto.class), any(Book.class));
+        
+        when(productRepository.save(any(Book.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockRepository.save(any(Stock.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // Настраиваем возврат обновленного DTO
+        when(bookMapper.toDto(any(Book.class))).thenAnswer(invocation -> {
+            Book updatedBook = invocation.getArgument(0);
+            return BookDto.builder()
+                    .id(updatedBook.getId())
+                    .name(updatedBook.getName())
+                    .description(updatedBook.getDescription())
+                    .author(updatedBook.getAuthor())
+                    .price(updatedBook.getStock().getPrice())
+                    .quantity(updatedBook.getStock().getQuantity())
+                    .build();
+        });
         
         // Act
-        List<Long> result = productService.patchMany(ids, patchNode);
-        
+        BookDto result = productService.patchBook(bookId, patchNode);
+
         // Assert
         assertNotNull(result);
-        assertEquals(ids, result);
-        verify(productRepository).findAllById(ids);
-        verify(productRepository).saveAll(products);
-        verify(productMapper, times(4)).toDto(any(Product.class), any(BigDecimal.class), any(Long.class));
+        assertEquals("New Name", result.getName());
+        assertEquals("New Description", result.getDescription());
+        assertEquals("New Author", result.getAuthor());
+        assertEquals(BigDecimal.valueOf(15), result.getPrice());
+        assertEquals(10L, result.getQuantity());
+        
+        verify(productRepository).findById(bookId);
+        verify(bookMapper).partialUpdate(any(BookDto.class), any(Book.class));
+        verify(productRepository).save(any(Book.class));
+        verify(stockRepository).save(any(Stock.class));
     }
     
     @Test
@@ -414,5 +474,187 @@ public class ProductServiceTest {
         assertThrows(ResponseStatusException.class, () -> productService.delete(productId));
         verify(productRepository).findById(productId);
         verify(productRepository, never()).delete(any());
+    }
+    
+    @Test
+    public void testGetBookList_EmptyPage() {
+        // Arrange
+        when(bookRepository.findAll(any(Pageable.class))).thenReturn(Page.empty());
+        
+        // Act
+        Page<BookDto> result = productService.getBookList(Pageable.unpaged());
+        
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+    
+    @Test
+    void testGetBookList_WithBooks() {
+        // Arrange
+        Book book1 = new Book();
+        book1.setId(1L);
+        book1.setName("Book 1");
+        book1.setAuthor("Author 1");
+        
+        Book book2 = new Book();
+        book2.setId(2L);
+        book2.setName("Book 2");
+        book2.setAuthor("Author 2");
+        
+        List<Book> books = List.of(book1, book2);
+        
+        Page<Book> bookPage = new PageImpl<>(books);
+        
+        BookDto bookDto1 = new BookDto();
+        bookDto1.setId(1L);
+        bookDto1.setName("Book 1");
+        bookDto1.setAuthor("Author 1");
+        
+        BookDto bookDto2 = new BookDto();
+        bookDto2.setId(2L);
+        bookDto2.setName("Book 2");
+        bookDto2.setAuthor("Author 2");
+        
+        Stock stock1 = new Stock();
+        stock1.setPrice(BigDecimal.TEN);
+        stock1.setQuantity(10L);
+        
+        Stock stock2 = new Stock();
+        stock2.setPrice(BigDecimal.valueOf(20.0));
+        stock2.setQuantity(20L);
+        
+        when(bookRepository.findAll(any(Pageable.class))).thenReturn(bookPage);
+        when(bookMapper.toDto(book1)).thenReturn(bookDto1);
+        when(bookMapper.toDto(book2)).thenReturn(bookDto2);
+        when(stockRepository.findByProductId(1L)).thenReturn(stock1);
+        when(stockRepository.findByProductId(2L)).thenReturn(stock2);
+        
+        // Act
+        Page<BookDto> result = productService.getBookList(Pageable.unpaged());
+        
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(2, result.getTotalElements());
+        
+        BookDto resultBookDto1 = result.getContent().get(0);
+        assertEquals(1L, resultBookDto1.getId());
+        assertEquals("Book 1", resultBookDto1.getName());
+        assertEquals(BigDecimal.TEN, resultBookDto1.getPrice());
+        assertEquals(10L, resultBookDto1.getQuantity());
+        
+        BookDto resultBookDto2 = result.getContent().get(1);
+        assertEquals(2L, resultBookDto2.getId());
+        assertEquals("Book 2", resultBookDto2.getName());
+        assertEquals(BigDecimal.valueOf(20.0), resultBookDto2.getPrice());
+        assertEquals(20L, resultBookDto2.getQuantity());
+        
+        verify(bookRepository).findAll(any(Pageable.class));
+        verify(bookMapper, times(2)).toDto(any(Book.class));
+        verify(stockRepository, times(2)).findByProductId(anyLong());
+    }
+    
+    @Test
+    public void testGetBookList_WithSomeBooksWithoutStock() {
+        // Arrange
+        Book book1 = new Book();
+        book1.setId(1L);
+        book1.setName("Book 1");
+        
+        Book book2 = new Book();
+        book2.setId(2L);
+        book2.setName("Book 2");
+        
+        BookDto bookDto1 = new BookDto();
+        bookDto1.setId(1L);
+        bookDto1.setName("Book 1");
+        
+        BookDto bookDto2 = new BookDto();
+        bookDto2.setId(2L);
+        bookDto2.setName("Book 2");
+        
+        Stock stock1 = new Stock();
+        stock1.setPrice(BigDecimal.valueOf(10.0));
+        stock1.setQuantity(10L);
+        
+        when(bookRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(book1, book2)));
+        when(bookMapper.toDto(book1)).thenReturn(bookDto1);
+        when(bookMapper.toDto(book2)).thenReturn(bookDto2);
+        when(stockRepository.findByProductId(1L)).thenReturn(stock1);
+        when(stockRepository.findByProductId(2L)).thenReturn(null);
+        
+        // Act
+        Page<BookDto> result = productService.getBookList(Pageable.unpaged());
+        
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(2, result.getTotalElements());
+        
+        BookDto resultBookDto1 = result.getContent().get(0);
+        assertEquals(1L, resultBookDto1.getId());
+        assertEquals("Book 1", resultBookDto1.getName());
+        assertEquals(BigDecimal.valueOf(10.0), resultBookDto1.getPrice());
+        assertEquals(10L, resultBookDto1.getQuantity());
+        
+        BookDto resultBookDto2 = result.getContent().get(1);
+        assertEquals(2L, resultBookDto2.getId());
+        assertEquals("Book 2", resultBookDto2.getName());
+        assertEquals(BigDecimal.ZERO, resultBookDto2.getPrice());
+        assertEquals(0L, resultBookDto2.getQuantity());
+        
+        verify(bookRepository).findAll(any(Pageable.class));
+        verify(bookMapper, times(2)).toDto(any(Book.class));
+        verify(stockRepository, times(2)).findByProductId(anyLong());
+    }
+    
+    @Test
+    void testGetBookById() {
+        // Arrange
+        Long productId = 1L;
+        Book book = new Book();
+        book.setId(productId);
+        book.setName("Test Book");
+        book.setAuthor("Test Author");
+        
+        BookDto bookDto = new BookDto();
+        bookDto.setId(productId);
+        bookDto.setName("Test Book");
+        bookDto.setAuthor("Test Author");
+        
+        Stock stock = new Stock();
+        stock.setPrice(BigDecimal.valueOf(15.99));
+        stock.setQuantity(10L);
+        
+        when(bookRepository.findById(productId)).thenReturn(Optional.of(book));
+        when(bookMapper.toDto(book)).thenReturn(bookDto);
+        when(stockRepository.findByProductId(productId)).thenReturn(stock);
+        
+        // Act
+        BookDto result = productService.getBookById(productId);
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(productId, result.getId());
+        assertEquals("Test Book", result.getName());
+        assertEquals("Test Author", result.getAuthor());
+        assertEquals(BigDecimal.valueOf(15.99), result.getPrice());
+        assertEquals(10L, result.getQuantity());
+        
+        verify(bookRepository).findById(productId);
+        verify(bookMapper).toDto(book);
+        verify(stockRepository).findByProductId(productId);
+    }
+    
+    @Test
+    void testGetBookByIdNotFound() {
+        // Arrange
+        Long productId = 1L;
+        when(bookRepository.findById(productId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResponseStatusException.class, () -> productService.getBookById(productId));
+        verify(bookRepository).findById(productId);
     }
 }

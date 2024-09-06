@@ -9,8 +9,6 @@ import ru.fsdstudio.product.entity.Product;
 public interface ProductMapper {
     Product toEntity(ProductDto productDto);
     
-//    ProductDto toDto(Product product);
-    
     ProductDto toDto(Product product, BigDecimal price, Long quantity);
     
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
