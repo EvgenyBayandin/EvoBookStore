@@ -13,7 +13,8 @@ public class PersonService {
     @Autowired
     private RestTemplate restTemplate;
     
-    private static final String PERSON_URL = "http://localhost:8081/rest/customers/";
+//    private static final String PERSON_URL = "http://localhost:8081/rest/customers/";
+private static final String PERSON_URL = "http://localhost/person/rest/customers/";
     
     public CustomerDto getOne(Long id) {
         try {
