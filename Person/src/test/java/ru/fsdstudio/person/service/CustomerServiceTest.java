@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import ru.fsdstudio.person.config.PasswordEncoderConfig;
 import ru.fsdstudio.person.dto.CustomerRequestDtoV1;
@@ -141,7 +142,7 @@ public class CustomerServiceTest {
         customer.setPassword("password");
         when(customerMapper.toEntity(dto)).thenReturn(customer);
         when(passwordEncoder.encode(customer.getPassword())).thenReturn("encodedPassword");
-        when(customerRepository.save(customer)).thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Email already exists"));
+        when(customerRepository.save(customer)).thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists"));
         
         // Act and Assert
         assertThrows(ResponseStatusException.class, () -> customerService.create(dto));

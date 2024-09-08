@@ -21,11 +21,7 @@ public class CustomerController {
     private final CustomerService customerService;
     
     @GetMapping
-    public Page<CustomerResponceDtoV1> getList(
-            @Schema(description = "Pageable", defaultValue = "page=0&size=10&sort=id,asc")
-            @SortDefault(sort = "id", direction = Sort.Direction.ASC)
-            Pageable pageable
-    ) {
+    public Page<CustomerResponceDtoV1> getList(@Schema(description = "Pageable", defaultValue = "page=0&size=10&sort=id,asc") @SortDefault(sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         return customerService.getList(pageable);
     }
     

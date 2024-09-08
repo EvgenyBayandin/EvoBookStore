@@ -36,7 +36,7 @@ public class CustomerService {
     
     public CustomerResponceDtoV1 getOne(Long id) {
         Optional<Customer> customerOptional = customerRepository.findById(id);
-        return customerMapper.toDto1(customerOptional.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity with id `%s` not found".formatted(id))));
+        return customerMapper.toDto1(customerOptional.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer with id `%s` not found".formatted(id))));
     }
     
     public CustomerResponceDtoV1 create(CustomerRequestDtoV1 dto) {
@@ -48,7 +48,7 @@ public class CustomerService {
     }
     
     public CustomerResponceDtoV1 patch(Long id, JsonNode patchNode) throws IOException {
-        Customer customer = customerRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity with id `%s` not found".formatted(id)));
+        Customer customer = customerRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer with id `%s` not found".formatted(id)));
         
         CustomerRequestDtoV1 customerRequestDtoV1 = customerMapper.toDto(customer);
         objectMapper.readerForUpdating(customerRequestDtoV1).readValue(patchNode);
