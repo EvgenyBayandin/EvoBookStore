@@ -9,14 +9,17 @@
 
 Для работы приложения необходим "Docker Desktop", при необходимости скачайте, установите и запустите.
 
-Запустите сервисы Postgres и Pgadmin командой: 
+Запустите сборку и запуск сервисов командой: 
 ### `docker-compose up`
 
-Запустите сервисы в следующей последовательности:
-### `EurekaApplication`
-### `GatewayApplication`
-### `PersonApplication`
-### `ProductApplication`
+В случае необходимости ручного запуска, запускайте контейнеры с сервисами в последовательности, указанной в docker-compose.yaml:
+### `postgres`
+### `pgadmin`
+### `eureka (EurekaApplication)`
+### `gateway (GatewayApplication)`
+### `person (PersonApplication)`
+### `product (ProductApplication)`
+
 
 Для работы с сервисами Person и Product доступен Swagger UI
 ###  http://localhost:8081/swagger-ui/index.html#
@@ -37,5 +40,3 @@
 - Docker Compose
 - Maven
 - Git
-
-## Дополнительная информация
